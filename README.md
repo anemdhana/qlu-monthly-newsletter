@@ -2,7 +2,7 @@
 
 WordPress **Jnanodayam reader / blog** for Quantum Life University — full Te + English readings. Primary series: **Devi Navaratrula Jnanam** (10 days). Optional sample **monthly magazine** issues.
 
-Specs: [docs/README.md](./docs/README.md) · **Share / rebuild content:** [docs/SHARE.md](./docs/SHARE.md)
+Specs: [docs/README.md](./docs/README.md) · **Local rebuild:** [docs/SHARE.md](./docs/SHARE.md) · **Hostinger deploy:** [docs/HOSTINGER.md](./docs/HOSTINGER.md)
 
 ---
 

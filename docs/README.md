@@ -2,7 +2,7 @@
 
 Public **Telugu + English** web magazine for Quantum Life University. Editors design layout, place images, and paste content in a rich visual editor.
 
-**Companions:** [Requirements](./REQUIREMENTS.md) · [Technical](./TECHNICAL.md) · [Look & feel](./LOOK-AND-FEEL.md) · [Share / rebuild](./SHARE.md) · [Magazine folder seed](./MAGAZINE-SEED.md)
+**Companions:** [Requirements](./REQUIREMENTS.md) · [Technical](./TECHNICAL.md) · [Look & feel](./LOOK-AND-FEEL.md) · [Share / rebuild](./SHARE.md) · [Magazine folder seed](./MAGAZINE-SEED.md) · [Hostinger deploy](./HOSTINGER.md)
 
 ---
 

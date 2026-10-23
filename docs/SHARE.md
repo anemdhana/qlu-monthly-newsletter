@@ -1,5 +1,7 @@
 # Sharing this project — rebuild content from scripts
 
+Live Hostinger deploy (migrate or SSH seed): **[HOSTINGER.md](./HOSTINGER.md)**.
+
 The git repo has **theme + plugins + scripts + sample assets**. It does **not** include the WordPress database.
 
 Anyone who clones and runs Docker gets an empty site until they run the seed/import steps below. After that they should see the same **Jnanodayam Devi readings** and **sample magazine** (layout may differ slightly from your machine if you edited posts by hand later).
