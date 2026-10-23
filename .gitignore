@@ -1,0 +1,30 @@
+# Environment
+.env
+.env.local
+*.local
+
+# WordPress runtime (Docker volume mounts keep these out of git when generated)
+wp-content/uploads/
+wp-content/cache/
+wp-content/upgrade/
+wp-content/ai1wm-backups/
+wp-content/debug.log
+
+# Parent themes / plugins installed at runtime (not vendored in v1)
+wp-content/themes/kadence/
+wp-content/themes/twentytwenty*/
+wp-content/plugins/
+!wp-content/mu-plugins/
+!wp-content/mu-plugins/**
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~
+
+# Logs
+*.log
+npm-debug.log*

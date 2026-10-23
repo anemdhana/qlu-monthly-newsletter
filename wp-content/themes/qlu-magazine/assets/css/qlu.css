@@ -1,0 +1,331 @@
+/**
+ * QLU Monthly Magazine — soft paper / gold tokens
+ * See docs/LOOK-AND-FEEL.md
+ */
+
+:root {
+  --qlu-paper: #fffdf8;
+  --qlu-panel: #f6f1e8;
+  --qlu-ink: #352d26;
+  --qlu-heading: #6b4a25;
+  --qlu-muted: #7c6e5d;
+  --qlu-gold: #a17b43;
+  --qlu-line: #e8dfd0;
+  --qlu-content-max: 44rem;
+  --qlu-font-te: "Noto Sans Telugu", "Source Sans 3", system-ui, sans-serif;
+  --qlu-font-en: "Source Sans 3", "Noto Sans Telugu", system-ui, sans-serif;
+}
+
+html {
+  background: var(--qlu-paper);
+}
+
+body {
+  margin: 0;
+  color: var(--qlu-ink);
+  background: var(--qlu-paper);
+  font-family: var(--qlu-font-en);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+}
+
+body.lang-te,
+.qlu-lang-te {
+  font-family: var(--qlu-font-te);
+  line-height: 1.65;
+}
+
+a {
+  color: var(--qlu-heading);
+}
+
+a:hover {
+  color: var(--qlu-gold);
+}
+
+.qlu-site {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.qlu-masthead {
+  background: var(--qlu-panel);
+  border-bottom: 1px solid var(--qlu-line);
+  padding: 1.75rem 1.25rem 1.5rem;
+  text-align: center;
+}
+
+.qlu-logo {
+  margin: 0 auto 0.75rem;
+}
+
+.qlu-logo img,
+.qlu-logo .custom-logo {
+  max-height: 72px;
+  width: auto;
+}
+
+.qlu-kicker {
+  color: var(--qlu-gold);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 1rem !important;
+}
+
+.qlu-intro {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--qlu-line);
+}
+
+.qlu-photo {
+  margin: 1rem 0 1.25rem;
+}
+
+.qlu-photo img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.qlu-two-col {
+  align-items: start;
+  gap: 1.25rem;
+  margin: 1rem 0 1.5rem;
+}
+
+@media (max-width: 700px) {
+  .qlu-two-col {
+    flex-direction: column !important;
+  }
+}
+
+.qlu-content .wp-block-quote,
+.qlu-pullquote {
+  background: var(--qlu-panel);
+  border-left: 3px solid var(--qlu-gold);
+  margin: 1.25rem 0;
+  padding: 1rem 1.25rem;
+  color: var(--qlu-heading);
+}
+
+.qlu-content .wp-block-quote cite,
+.qlu-pullquote cite {
+  color: var(--qlu-muted);
+  font-size: 0.875rem;
+  font-style: normal;
+}
+
+/* Jnanodayam programme hub + reader */
+.qlu-programme-banner {
+  margin: 0 0 1.25rem;
+}
+
+.qlu-programme-banner img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--qlu-line);
+  display: block;
+}
+
+.qlu-programme .week-label {
+  margin: 1.75rem 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--qlu-gold);
+}
+
+.qlu-day-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.qlu-day-list li {
+  margin: 0 0 0.65rem;
+  padding: 0.85rem 1rem;
+  background: var(--qlu-panel);
+  border: 1px solid var(--qlu-line);
+  border-radius: 8px;
+}
+
+.qlu-day-list strong {
+  display: block;
+  color: var(--qlu-heading);
+  font-size: 0.95rem;
+}
+
+.qlu-day-list em {
+  display: block;
+  font-style: normal;
+  color: var(--qlu-muted);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.5rem;
+}
+
+.qlu-day-list .day-langs a {
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.qlu-reader-head {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--qlu-line);
+}
+
+.qlu-reader-title {
+  margin: 0.35rem 0 0.75rem;
+  font-size: clamp(1.25rem, 2.4vw, 1.65rem);
+  color: var(--qlu-heading);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.qlu-reader-body {
+  max-width: 42rem;
+}
+
+.qlu-reader-body h2 {
+  margin-top: 2rem;
+}
+
+.qlu-reader-body p {
+  margin: 0 0 0.9rem;
+  text-align: left;
+}
+
+.qlu-reader-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 2.5rem 0 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--qlu-line);
+  font-size: 0.95rem;
+  flex-wrap: wrap;
+}
+
+.qlu-reader-nav a {
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.qlu-content {
+  --qlu-content-max: 48rem;
+}
+
+.qlu-programme.qlu-content {
+  --qlu-content-max: 44rem;
+}
+
+.qlu-wordmark {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--qlu-gold);
+  font-weight: 600;
+}
+
+.qlu-masthead h1 {
+  margin: 0.5rem 0 0.25rem;
+  font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  color: var(--qlu-heading);
+  font-weight: 700;
+}
+
+.qlu-masthead .qlu-meta {
+  margin: 0;
+  color: var(--qlu-muted);
+  font-size: 0.95rem;
+}
+
+.qlu-lang-switch {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.qlu-lang-switch a {
+  text-decoration: none;
+  margin: 0 0.35rem;
+  color: var(--qlu-muted);
+}
+
+.qlu-lang-switch a[aria-current="page"] {
+  color: var(--qlu-gold);
+  font-weight: 600;
+  border-bottom: 1px solid var(--qlu-gold);
+}
+
+.qlu-content {
+  width: min(100% - 2rem, var(--qlu-content-max));
+  margin: 2rem auto 3rem;
+  flex: 1;
+}
+
+.qlu-content h2 {
+  color: var(--qlu-heading);
+  font-size: 1.2rem;
+  font-weight: 650;
+  margin: 2.25rem 0 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--qlu-line);
+}
+
+.qlu-content h2:first-child {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.qlu-content p,
+.qlu-content li {
+  color: var(--qlu-ink);
+}
+
+.qlu-content img {
+  max-width: 100%;
+  height: auto;
+  border: 1px solid var(--qlu-line);
+  border-radius: 6px;
+}
+
+.qlu-content figcaption {
+  color: var(--qlu-muted);
+  font-size: 0.875rem;
+  margin-top: 0.35rem;
+}
+
+.qlu-pullquote {
+  background: var(--qlu-panel);
+  border-left: 3px solid var(--qlu-gold);
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  color: var(--qlu-heading);
+}
+
+.qlu-footer {
+  border-top: 1px solid var(--qlu-line);
+  padding: 1.25rem;
+  text-align: center;
+  color: var(--qlu-muted);
+  font-size: 0.875rem;
+  background: var(--qlu-panel);
+}
+
+.qlu-footer a {
+  color: var(--qlu-heading);
+}
+
+/* Editor canvas */
+.editor-styles-wrapper {
+  background: var(--qlu-paper);
+  color: var(--qlu-ink);
+  font-family: var(--qlu-font-en);
+}

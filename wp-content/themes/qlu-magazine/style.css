@@ -1,0 +1,14 @@
+/*
+Theme Name: QLU Magazine
+Theme URI: https://github.com/dhana/qlu-monthly-newsletter
+Description: Soft-paper child theme for Quantum Life University Monthly Magazine (Telugu + English). Activate Kadence (or another lightweight parent) in production; this theme ships standalone tokens for local scaffolding.
+Author: Quantum Life University
+Version: 0.1.0
+Requires at least: 6.4
+Tested up to: 6.7
+Requires PHP: 8.1
+Text Domain: qlu-magazine
+Tags: magazine, custom-colors, editor-style, translation-ready
+*/
+
+/* Front-end tokens also live in assets/css/qlu.css (enqueued from functions.php). */
