@@ -2,8 +2,13 @@
 
 Seed a monthly magazine from disk: **one folder per issue month**, **one subfolder per section**, with text + photos linked by filename.
 
-Import: `python scripts/seed_magazine_from_folder.py --month 2026-10`  
-(or PHP inside Docker — see script help).
+```powershell
+python scripts/seed_magazine_from_folder.py --month 2026-10
+python scripts/seed_magazine_from_folder.py --month 2026-10 --section themes
+python scripts/seed_magazine_from_folder.py --month 2026-10 --section themes --section visits
+```
+
+`--section` can be a folder name (`01-themes`), short slug (`themes`), or number (`01` / `1`). Repeat the flag for multiple sections. Partial seed **updates only those sections** and keeps the rest of the existing WP issue.
 
 ---
 
@@ -124,6 +129,16 @@ Omit the folder, **or** leave folder with no `content.*.txt` and no images → i
 4. Open `/issues/YYYY-MM-te/` and `/issues/YYYY-MM-en/`
 
 Re-run updates the same issue month (upsert by `qlu_issue_month` + lang).
+
+### Partial section update
+
+After editing only one folder (e.g. `04-visits/`):
+
+```powershell
+python scripts/seed_magazine_from_folder.py --month 2026-10 --section visits
+```
+
+Aliases: `masthead` `themes` `highlight-classes` `experiences` `visits` `vanya` `campus` `upcoming` `closing` — or `00`…`08` / full `NN-name`.
 
 ---
 

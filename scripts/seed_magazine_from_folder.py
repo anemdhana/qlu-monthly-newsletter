@@ -5,6 +5,8 @@ Seed WordPress magazine issues from content/magazine/YYYY-MM/ folders.
 See docs/MAGAZINE-SEED.md for naming conventions.
 
   python scripts/seed_magazine_from_folder.py --month 2026-10
+  python scripts/seed_magazine_from_folder.py --month 2026-10 --section themes
+  python scripts/seed_magazine_from_folder.py --month 2026-10 --section themes --section visits
   python scripts/seed_magazine_from_folder.py --month 2026-10 --init-from-template
 """
 
@@ -75,6 +77,23 @@ def docker_cp(src: Path, dest: str) -> None:
     run(["docker", "cp", str(src), f"{cid}:{dest}"])
 
 
+def resolve_section(token: str) -> str:
+    """Map themes / 01 / 01-themes → canonical folder name."""
+    t = token.strip().lower()
+    if not t:
+        raise SystemExit("Empty --section value")
+    for folder in SECTION_DIRS:
+        slug = re.sub(r"^\d+-", "", folder)
+        num = folder.split("-", 1)[0]
+        if t in (folder.lower(), slug, num, str(int(num))):
+            return folder
+    raise SystemExit(
+        f"Unknown section: {token}\n"
+        f"Use one of: {', '.join(SECTION_DIRS)}\n"
+        "Or short names: masthead, themes, highlight-classes, experiences, visits, vanya, campus, upcoming, closing"
+    )
+
+
 def init_from_template(month: str) -> Path:
     dest = MAG_ROOT / month
     if dest.exists():
@@ -94,7 +113,7 @@ def init_from_template(month: str) -> Path:
     return dest
 
 
-def seed(month: str) -> None:
+def seed(month: str, sections: list[str] | None) -> None:
     if not re.fullmatch(r"\d{4}-\d{2}", month):
         raise SystemExit("Month must be YYYY-MM")
 
@@ -105,18 +124,35 @@ def seed(month: str) -> None:
             f"  Create with: python scripts/seed_magazine_from_folder.py --month {month} --init-from-template"
         )
 
-    # Soft check: at least one section folder
     found = [d for d in SECTION_DIRS if (issue_dir / d).is_dir()]
     if not found:
         raise SystemExit(f"No section folders under {issue_dir}. See docs/MAGAZINE-SEED.md")
 
+    resolved: list[str] = []
+    if sections:
+        resolved = [resolve_section(s) for s in sections]
+        missing = [s for s in resolved if not (issue_dir / s).is_dir()]
+        if missing:
+            raise SystemExit(
+                "Section folder(s) not found under issue:\n  - "
+                + "\n  - ".join(missing)
+            )
+
     print(f"Issue folder: {issue_dir}")
     print(f"Sections present: {', '.join(found)}")
+    if resolved:
+        print(f"Seeding only: {', '.join(resolved)} (other sections kept from existing WP posts)")
+    else:
+        print("Seeding: all sections")
 
     docker_cp(issue_dir, "/tmp/magazine-issue")
     php = REPO / "scripts" / "import-magazine-from-folder.php"
     docker_cp(php, "/tmp/import-magazine-from-folder.php")
-    compose("exec", "-T", SERVICE, "php", "/tmp/import-magazine-from-folder.php", month)
+
+    cmd = ["exec", "-T", SERVICE, "php", "/tmp/import-magazine-from-folder.php", month]
+    if resolved:
+        cmd.append(",".join(resolved))
+    compose(*cmd)
 
     port = "8080"
     env = REPO / ".env"
@@ -125,14 +161,41 @@ def seed(month: str) -> None:
             if line.startswith("WORDPRESS_PORT="):
                 port = line.split("=", 1)[1].strip() or port
 
+    # Prefer slug from issue.json when present
+    slug_te = f"{month}-te"
+    slug_en = f"{month}-en"
+    meta_path = issue_dir / "issue.json"
+    if meta_path.is_file():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            slug_te = meta.get("slug_te") or slug_te
+            slug_en = meta.get("slug_en") or slug_en
+        except json.JSONDecodeError:
+            pass
+
     print("\nOpen:")
-    print(f"  http://localhost:{port}/issues/{month}-te/")
-    print(f"  http://localhost:{port}/issues/{month}-en/")
+    print(f"  http://localhost:{port}/issues/{slug_te}/")
+    print(f"  http://localhost:{port}/issues/{slug_en}/")
 
 
 def main() -> int:
-    p = argparse.ArgumentParser(description="Seed magazine from content/magazine/YYYY-MM/")
+    p = argparse.ArgumentParser(
+        description="Seed magazine from content/magazine/YYYY-MM/",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "section aliases: masthead, themes, highlight-classes, experiences,\n"
+            "  visits, vanya, campus, upcoming, closing\n"
+            "  or folder names / numbers: 01-themes, 01, 04-visits, 4"
+        ),
+    )
     p.add_argument("--month", required=True, help="Issue id YYYY-MM")
+    p.add_argument(
+        "--section",
+        action="append",
+        dest="sections",
+        metavar="NAME",
+        help="Seed only this section (repeatable). Omit to seed all.",
+    )
     p.add_argument(
         "--init-from-template",
         action="store_true",
@@ -144,7 +207,7 @@ def main() -> int:
         init_from_template(args.month)
         return 0
 
-    seed(args.month)
+    seed(args.month, args.sections)
     return 0
 
 

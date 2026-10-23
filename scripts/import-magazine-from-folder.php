@@ -3,7 +3,9 @@
  * Build qlu_issue Te+En posts from content/magazine/YYYY-MM/ section folders.
  *
  * Expects issue tree at: /tmp/magazine-issue/  (docker cp of content/magazine/YYYY-MM)
- * Env/args: month via CLI argv[1] e.g. 2026-10
+ * Env/args:
+ *   argv[1] month YYYY-MM
+ *   argv[2] optional comma-separated sections (e.g. themes,04-visits or 01-themes)
  *
  * Convention: docs/MAGAZINE-SEED.md
  */
@@ -17,9 +19,11 @@ require_once ABSPATH . 'wp-admin/includes/image.php';
 
 $month = $argv[1] ?? getenv('QLU_MAGAZINE_MONTH') ?: '';
 if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
-	fwrite(STDERR, "Usage: php import-magazine-from-folder.php YYYY-MM\n");
+	fwrite(STDERR, "Usage: php import-magazine-from-folder.php YYYY-MM [section,section…]\n");
 	exit(1);
 }
+
+$sections_arg = $argv[2] ?? getenv('QLU_MAGAZINE_SECTIONS') ?: '';
 
 $root = '/tmp/magazine-issue';
 if (!is_dir($root)) {
@@ -45,6 +49,161 @@ const QLU_MAG_SECTIONS = [
 ];
 
 const QLU_IMG_EXT = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+/**
+ * Resolve user section tokens to folder keys.
+ * Accepts: 01-themes | themes | 01 | masthead | 00
+ *
+ * @param string $raw comma-separated
+ * @return list<string> folder keys, or empty = all sections
+ */
+function qlu_mag_resolve_sections(string $raw): array {
+	$raw = trim($raw);
+	if ($raw === '' || $raw === '*' || strcasecmp($raw, 'all') === 0) {
+		return [];
+	}
+	$wanted = [];
+	foreach (preg_split('/\s*,\s*/', $raw) ?: [] as $token) {
+		$token = strtolower(trim($token));
+		if ($token === '') {
+			continue;
+		}
+		$matched = null;
+		foreach (array_keys(QLU_MAG_SECTIONS) as $folder) {
+			$slug = preg_replace('/^\d+-/', '', $folder) ?? $folder;
+			$num = preg_replace('/^(\d+).*/', '$1', $folder) ?? '';
+			if (
+				$token === strtolower($folder)
+				|| $token === strtolower($slug)
+				|| ($num !== '' && $token === $num)
+				|| ($num !== '' && $token === (string) (int) $num)
+			) {
+				$matched = $folder;
+				break;
+			}
+		}
+		if ($matched === null) {
+			fwrite(STDERR, "Unknown section: {$token}\nKnown: " . implode(', ', array_keys(QLU_MAG_SECTIONS)) . "\n");
+			exit(1);
+		}
+		$wanted[$matched] = true;
+	}
+	return array_keys($wanted);
+}
+
+/**
+ * Split existing post HTML into masthead + keyed body sections.
+ *
+ * @return array{masthead:string, sections:array<string,string>}
+ */
+function qlu_mag_parse_existing(string $html): array {
+	$sections = [];
+	foreach (QLU_MAG_SECTIONS as $folder => $meta) {
+		if ($meta['heading'] !== null) {
+			$sections[$folder] = '';
+		}
+	}
+	$html = trim($html);
+	if ($html === '') {
+		return ['masthead' => '', 'sections' => $sections];
+	}
+
+	$heading_to_folder = [];
+	foreach (QLU_MAG_SECTIONS as $folder => $meta) {
+		if ($meta['heading'] !== null) {
+			$heading_to_folder[$meta['heading']] = $folder;
+		}
+	}
+
+	// Split on Gutenberg H2 blocks (importer output).
+	$parts = preg_split(
+		'/(?=<!-- wp:heading \{"level":2\} -->)/',
+		$html,
+		-1,
+		PREG_SPLIT_NO_EMPTY
+	);
+	if ($parts === false || $parts === []) {
+		return ['masthead' => $html, 'sections' => $sections];
+	}
+
+	$masthead = '';
+	foreach ($parts as $part) {
+		if (preg_match('/<h2 class="wp-block-heading">([^<]+)<\/h2>/u', $part, $m)) {
+			$heading = html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+			$folder = $heading_to_folder[$heading] ?? null;
+			if ($folder !== null) {
+				$sections[$folder] = trim($part) . "\n\n";
+				continue;
+			}
+		}
+		// Content before first known H2 = masthead
+		if ($masthead === '' && !preg_match('/<!-- wp:heading \{"level":2\} -->/', $part)) {
+			$masthead = trim($part) . "\n\n";
+		} elseif (!preg_match('/<!-- wp:heading \{"level":2\} -->/', $part)) {
+			$masthead .= trim($part) . "\n\n";
+		}
+	}
+
+	return ['masthead' => $masthead, 'sections' => $sections];
+}
+
+/**
+ * Build HTML for a single section folder.
+ *
+ * @param array{heading:?string} $meta
+ * @return array{html:string, featured:?int}
+ */
+function qlu_mag_build_section(string $root, string $folder, array $meta, string $lang): array {
+	$dir = $root . '/' . $folder;
+	$heading = $meta['heading'];
+	$body = '';
+	$images_html = '';
+	$featured = null;
+
+	if (is_dir($dir)) {
+		$body = qlu_mag_text_to_blocks(qlu_mag_read($dir . '/content.' . $lang . '.txt'));
+
+		if ($folder === '00-masthead') {
+			foreach (QLU_IMG_EXT as $ext) {
+				$feat = $dir . '/featured.' . $ext;
+				if (is_readable($feat)) {
+					$media = qlu_mag_sideload($feat, "Magazine featured {$lang}");
+					$featured = $media['id'];
+					$cap = qlu_mag_read($dir . '/featured.caption.' . $lang . '.txt');
+					$alt = qlu_mag_read($dir . '/featured.alt.' . $lang . '.txt') ?: $cap ?: 'Cover';
+					$images_html .= qlu_mag_figure($media['id'], $media['url'], $cap, $alt);
+					break;
+				}
+			}
+		}
+
+		foreach (qlu_mag_list_images($dir) as $img) {
+			$stem = $img['stem'];
+			$media = qlu_mag_sideload($img['path'], "Magazine {$folder} {$stem}");
+			$cap = qlu_mag_read($dir . '/' . $stem . '.caption.' . $lang . '.txt');
+			$alt = qlu_mag_read($dir . '/' . $stem . '.alt.' . $lang . '.txt') ?: $cap ?: $stem;
+			$images_html .= qlu_mag_figure($media['id'], $media['url'], $cap, $alt);
+		}
+	}
+
+	$has_content = $body !== '' || $images_html !== '';
+	if (!$has_content) {
+		if ($folder === '00-masthead') {
+			return ['html' => '', 'featured' => null];
+		}
+		$body = "<!-- wp:paragraph -->\n<p>" . esc_html(qlu_mag_empty($lang)) . "</p>\n<!-- /wp:paragraph -->\n\n";
+	}
+
+	$html = '';
+	if ($heading !== null) {
+		$html .= '<!-- wp:heading {"level":2} -->' . "\n";
+		$html .= '<h2 class="wp-block-heading">' . esc_html($heading) . "</h2>\n";
+		$html .= "<!-- /wp:heading -->\n\n";
+	}
+	$html .= $images_html . $body;
+
+	return ['html' => $html, 'featured' => $featured];
+}
 
 function qlu_mag_empty(string $lang): string {
 	return $lang === 'en'
@@ -179,65 +338,40 @@ HTML;
 }
 
 /**
+ * @param list<string> $only empty = all sections from disk
  * @return array{html:string, featured:?int}
  */
-function qlu_mag_build_lang(string $root, string $lang): array {
+function qlu_mag_build_lang(string $root, string $lang, array $only, string $existing_html = ''): array {
+	$filter = $only === [] ? null : array_fill_keys($only, true);
+	$parsed = qlu_mag_parse_existing($existing_html);
 	$html = '';
 	$featured = null;
 
 	foreach (QLU_MAG_SECTIONS as $folder => $meta) {
-		$dir = $root . '/' . $folder;
-		$heading = $meta['heading'];
+		$rebuild = $filter === null || isset($filter[$folder]);
 
-		$body = '';
-		$images_html = '';
-
-		if (is_dir($dir)) {
-			$body = qlu_mag_text_to_blocks(qlu_mag_read($dir . '/content.' . $lang . '.txt'));
-
+		if ($rebuild) {
+			$built = qlu_mag_build_section($root, $folder, $meta, $lang);
+			if ($built['featured']) {
+				$featured = $built['featured'];
+			}
+			$chunk = $built['html'];
+		} else {
+			// Keep prior WP content for this section when doing a partial seed.
 			if ($folder === '00-masthead') {
-				foreach (QLU_IMG_EXT as $ext) {
-					$feat = $dir . '/featured.' . $ext;
-					if (is_readable($feat)) {
-						$media = qlu_mag_sideload($feat, "Magazine featured {$lang}");
-						$featured = $media['id'];
-						$cap = qlu_mag_read($dir . '/featured.caption.' . $lang . '.txt');
-						$alt = qlu_mag_read($dir . '/featured.alt.' . $lang . '.txt') ?: $cap ?: 'Cover';
-						$images_html .= qlu_mag_figure($media['id'], $media['url'], $cap, $alt);
-						break;
-					}
+				$chunk = $parsed['masthead'];
+			} else {
+				$chunk = $parsed['sections'][$folder] ?? '';
+				if ($chunk === '') {
+					$chunk = '<!-- wp:heading {"level":2} -->' . "\n";
+					$chunk .= '<h2 class="wp-block-heading">' . esc_html((string) $meta['heading']) . "</h2>\n";
+					$chunk .= "<!-- /wp:heading -->\n\n";
+					$chunk .= "<!-- wp:paragraph -->\n<p>" . esc_html(qlu_mag_empty($lang)) . "</p>\n<!-- /wp:paragraph -->\n\n";
 				}
 			}
-
-			foreach (qlu_mag_list_images($dir) as $img) {
-				$stem = $img['stem'];
-				$media = qlu_mag_sideload($img['path'], "Magazine {$folder} {$stem}");
-				$cap = qlu_mag_read($dir . '/' . $stem . '.caption.' . $lang . '.txt');
-				$alt = qlu_mag_read($dir . '/' . $stem . '.alt.' . $lang . '.txt') ?: $cap ?: $stem;
-				$images_html .= qlu_mag_figure($media['id'], $media['url'], $cap, $alt);
-			}
 		}
 
-		$has_content = $body !== '' || $images_html !== '';
-		if (!$has_content) {
-			if ($folder === '00-masthead') {
-				continue;
-			}
-			$body = "<!-- wp:paragraph -->\n<p>" . esc_html(qlu_mag_empty($lang)) . "</p>\n<!-- /wp:paragraph -->\n\n";
-		}
-
-		if ($heading !== null) {
-			$html .= '<!-- wp:heading {"level":2} -->' . "\n";
-			$html .= '<h2 class="wp-block-heading">' . esc_html($heading) . "</h2>\n";
-			$html .= "<!-- /wp:heading -->\n\n";
-		}
-
-		// Photos after heading, then body (or body then photos for masthead intro)
-		if ($folder === '00-masthead') {
-			$html .= $images_html . $body;
-		} else {
-			$html .= $images_html . $body;
-		}
+		$html .= $chunk;
 	}
 
 	return ['html' => trim($html), 'featured' => $featured];
@@ -311,9 +445,33 @@ if (is_readable($json_path)) {
 $users = get_users(['number' => 1, 'orderby' => 'ID', 'order' => 'ASC']);
 $author = $users ? (int) $users[0]->ID : 1;
 
+$only = qlu_mag_resolve_sections($sections_arg);
+if ($only !== []) {
+	echo 'sections=' . implode(',', $only) . "\n";
+} else {
+	echo "sections=all\n";
+}
+
+/**
+ * Existing post content for merge (partial seed).
+ */
+function qlu_mag_existing_content(string $month, string $lang): string {
+	$existing = get_posts([
+		'post_type' => 'qlu_issue',
+		'post_status' => 'any',
+		'posts_per_page' => 1,
+		'meta_query' => [
+			'relation' => 'AND',
+			['key' => 'qlu_issue_month', 'value' => $month],
+			['key' => 'qlu_issue_lang', 'value' => $lang],
+		],
+	]);
+	return $existing ? (string) $existing[0]->post_content : '';
+}
+
 try {
-	$te = qlu_mag_build_lang($root, 'te');
-	$en = qlu_mag_build_lang($root, 'en');
+	$te = qlu_mag_build_lang($root, 'te', $only, qlu_mag_existing_content($month, 'te'));
+	$en = qlu_mag_build_lang($root, 'en', $only, qlu_mag_existing_content($month, 'en'));
 	$te_id = qlu_mag_upsert($meta['title_te'], $meta['slug_te'], $te['html'], $month, 'te', $author, $te['featured'] ?? $en['featured']);
 	$en_id = qlu_mag_upsert($meta['title_en'], $meta['slug_en'], $en['html'], $month, 'en', $author, $en['featured'] ?? $te['featured']);
 } catch (Throwable $e) {
